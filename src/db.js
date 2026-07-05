@@ -4,13 +4,15 @@ const KEY = "mgco-field-v1";
 
 const DEFAULTS = {
   settings: {
-    company: "MG&CO Field",
+    company: "",
     phone: "",
     email: "",
     logo: null,
+    banner: null,
     rate: 85,
     currency: "$",
     taxRate: 13,
+    theme: { accent: "#f2a71b" },
   },
   customers: [],
   jobs: [],

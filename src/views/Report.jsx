@@ -1,4 +1,4 @@
-import { workedMs, breakMs, jobTotals, fmtTime, fmtDate, fmtDur, money, buildReportText, dataURLtoFile } from "../util";
+import { workedMs, jobTotals, fmtTime, fmtDate, fmtDur, money, buildReportText, dataURLtoFile } from "../util";
 import { TopBar, toast } from "../ui";
 import { Icon } from "../icons";
 
@@ -85,6 +85,7 @@ export default function Report({ db, update, go, jobId }) {
       </div>
 
       <div className="report-paper">
+        {s.banner && <img className="rp-banner" src={s.banner} alt="" />}
         <div className="rp-head">
           {s.logo && <img className="rp-logo" src={s.logo} alt="" />}
           <div className="rp-co">
@@ -110,10 +111,7 @@ export default function Report({ db, update, go, jobId }) {
             <b>
               {fmtTime(job.startedAt)} – {job.finishedAt ? fmtTime(job.finishedAt) : "…"}
             </b>
-            <span>
-              {fmtDur(workedMs(job))} worked
-              {breakMs(job) > 0 ? `, ${fmtDur(breakMs(job))} break` : ""}
-            </span>
+            <span>{fmtDur(workedMs(job))} worked</span>
           </div>
         </div>
 

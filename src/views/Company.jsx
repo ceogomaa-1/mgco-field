@@ -1,19 +1,45 @@
 import { useRef } from "react";
 import { compressImage } from "../util";
 import { TopBar, Field } from "../ui";
+import { Icon } from "../icons";
+
+const PRESETS = [
+  { name: "Amber", value: "#f2a71b" },
+  { name: "Blue", value: "#0a84ff" },
+  { name: "Green", value: "#30d158" },
+  { name: "Red", value: "#ff453a" },
+  { name: "Purple", value: "#bf5af2" },
+  { name: "Sky", value: "#5ac8fa" },
+  { name: "Teal", value: "#2dd4bf" },
+  { name: "Pink", value: "#ff375f" },
+];
 
 export default function Company({ db, update, go }) {
   const s = db.settings;
   const logoRef = useRef(null);
+  const bannerRef = useRef(null);
   const set = (key, value) => update((d) => (d.settings[key] = value));
+  const accent = (s.theme?.accent || "#f2a71b").toLowerCase();
+  const setAccent = (c) =>
+    update((d) => (d.settings.theme = { ...(d.settings.theme || {}), accent: c }));
 
   const onLogo = async (e) => {
     const f = e.target.files?.[0];
     e.target.value = "";
     if (!f) return;
     try {
-      const data = await compressImage(f, 300, 0.8);
-      set("logo", data);
+      set("logo", await compressImage(f, 320, 0.85));
+    } catch (err) {
+      console.warn(err);
+    }
+  };
+
+  const onBanner = async (e) => {
+    const f = e.target.files?.[0];
+    e.target.value = "";
+    if (!f) return;
+    try {
+      set("banner", await compressImage(f, 1400, 0.72));
     } catch (err) {
       console.warn(err);
     }
@@ -21,9 +47,9 @@ export default function Company({ db, update, go }) {
 
   return (
     <div className="page">
-      <TopBar title="Company & billing" onBack={() => go("more")} />
+      <TopBar title="Brand & appearance" onBack={() => go("more")} />
 
-      <h2>Shows on every customer report</h2>
+      <h2>Your brand — shown in the app & on every report</h2>
       <div className="card form">
         <div className="logo-row">
           {s.logo ? (
@@ -43,9 +69,56 @@ export default function Company({ db, update, go }) {
           </div>
           <input ref={logoRef} type="file" accept="image/*" hidden onChange={onLogo} />
         </div>
-        <Field label="Company name" value={s.company} onChange={(e) => set("company", e.target.value)} />
+
+        <div className="field">
+          <span>Banner photo (optional)</span>
+          {s.banner ? (
+            <div className="banner-preview">
+              <img src={s.banner} alt="banner" />
+              <div className="banner-btns">
+                <button className="btn secondary" onClick={() => bannerRef.current?.click()}>
+                  Change
+                </button>
+                <button className="btn ghost" onClick={() => set("banner", null)}>
+                  Remove
+                </button>
+              </div>
+            </div>
+          ) : (
+            <button className="banner-add" onClick={() => bannerRef.current?.click()}>
+              <Icon name="camera" size={20} />
+              Add a banner photo
+            </button>
+          )}
+          <input ref={bannerRef} type="file" accept="image/*" hidden onChange={onBanner} />
+        </div>
+
+        <Field label="Company name" value={s.company} onChange={(e) => set("company", e.target.value)} placeholder="Your Company Ltd." />
         <Field label="Phone" type="tel" value={s.phone} onChange={(e) => set("phone", e.target.value)} placeholder="(555) 123-4567" />
         <Field label="Email" type="email" value={s.email} onChange={(e) => set("email", e.target.value)} placeholder="you@company.com" />
+      </div>
+
+      <h2>Appearance</h2>
+      <div className="card form">
+        <label className="mini-label">ACCENT COLOR</label>
+        <div className="swatches">
+          {PRESETS.map((p) => (
+            <button
+              key={p.value}
+              className={"swatch" + (accent === p.value ? " sel" : "")}
+              style={{ background: p.value }}
+              onClick={() => setAccent(p.value)}
+              aria-label={p.name}
+            >
+              {accent === p.value && <Icon name="check" size={15} />}
+            </button>
+          ))}
+          <label className="swatch custom" style={{ background: accent }} aria-label="Custom color">
+            <Icon name="plus" size={15} />
+            <input type="color" value={accent} onChange={(e) => setAccent(e.target.value)} />
+          </label>
+        </div>
+        <small className="hint">Recolors the whole app and your reports — instantly.</small>
       </div>
 
       <h2>Billing defaults — adjustable per job at finish</h2>

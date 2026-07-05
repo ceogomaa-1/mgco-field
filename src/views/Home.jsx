@@ -13,7 +13,8 @@ export default function Home({ db, update, go, active }) {
     return () => clearInterval(t);
   }, [active]);
 
-  const cur = db.settings.currency;
+  const s = db.settings;
+  const cur = s.currency;
   const started = db.jobs.filter((j) => j.startedAt);
   const doneToday = started.filter((j) => j.status === "done" && isToday(j.startedAt));
   const workedToday = started.filter((j) => isToday(j.startedAt)).reduce((s, j) => s + workedMs(j), 0);
@@ -41,11 +42,16 @@ export default function Home({ db, update, go, active }) {
   return (
     <div className="page">
       <header className="brand">
-        <div className="wordmark">
-          MG&amp;CO <span>FIELD</span>
-        </div>
+        <button className="brand-id" onClick={() => go("company")}>
+          {s.logo && <img className="brand-logo" src={s.logo} alt="" />}
+          <span className={"brand-name" + (s.company ? "" : " unset")}>
+            {s.company || "Set up your brand"}
+          </span>
+        </button>
         <div className="brand-date">{fmtDate(Date.now())}</div>
       </header>
+
+      {s.banner && <img className="home-banner" src={s.banner} alt="" />}
 
       <h1 className="greet">{greeting()}.</h1>
 

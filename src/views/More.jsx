@@ -4,7 +4,7 @@ export default function More({ db, go }) {
   const rows = [
     { icon: "dollar", label: "Payroll", sub: "Hours & pay, week by week", view: "payroll" },
     { icon: "users", label: "Team", sub: `${db.workers.length || "No"} worker${db.workers.length === 1 ? "" : "s"} added`, view: "team" },
-    { icon: "briefcase", label: "Company & billing", sub: "Logo, rates, tax", view: "company" },
+    { icon: "briefcase", label: "Brand & appearance", sub: "Logo, banner, colors, billing", view: "company" },
     { icon: "sparkle", label: "AI Assistant", sub: "Voice notes & receipt scanning", view: "assistant" },
   ];
 
@@ -30,7 +30,7 @@ export default function More({ db, go }) {
       </div>
 
       <div className="version">
-        MG&amp;CO FIELD · v0.2
+        {db.settings.company || "FIELD"} · v0.3
         <span>Everything saves on this device automatically — works with no signal.</span>
       </div>
     </div>

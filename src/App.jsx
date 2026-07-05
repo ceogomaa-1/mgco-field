@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useDb } from "./db";
 import { Icon } from "./icons";
 import { Toaster } from "./ui";
+import { themeVars } from "./util";
 import Home from "./views/Home";
 import Pick from "./views/Pick";
 import Job from "./views/Job";
@@ -35,6 +36,10 @@ export default function App() {
   const props = { db, update, go };
   const active = db.jobs.find((j) => j.status === "active");
 
+  useEffect(() => {
+    document.title = db.settings.company || "Field";
+  }, [db.settings.company]);
+
   let screen;
   switch (view.name) {
     case "pick":      screen = <Pick {...props} />; break;
@@ -57,7 +62,7 @@ export default function App() {
   const viewKey = `${view.name}:${view.id || ""}`;
 
   return (
-    <div className="app">
+    <div className="app" style={themeVars(db.settings.theme?.accent)}>
       <AnimatePresence mode="wait" initial={false}>
         <motion.div
           key={viewKey}

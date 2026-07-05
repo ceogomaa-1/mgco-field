@@ -169,3 +169,43 @@ export function buildReportText(job, customer, settings, worker) {
   L.push(`— ${settings.company || ""}${contact ? " • " + contact : ""}`);
   return L.join("\n");
 }
+
+/* ---------- theming (white-label accent color) ---------- */
+
+export function hexToRgb(hex) {
+  let h = String(hex || "").replace("#", "").trim();
+  if (h.length === 3) h = h.split("").map((c) => c + c).join("");
+  if (!/^[0-9a-fA-F]{6}$/.test(h)) return { r: 242, g: 167, b: 27 };
+  const n = parseInt(h, 16);
+  return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 };
+}
+
+const clampByte = (c) => Math.max(0, Math.min(255, Math.round(c)));
+
+// amt > 0 lightens toward white, amt < 0 darkens toward black
+function mix(rgb, amt) {
+  const target = amt > 0 ? 255 : 0;
+  const p = Math.abs(amt);
+  return {
+    r: clampByte(rgb.r + (target - rgb.r) * p),
+    g: clampByte(rgb.g + (target - rgb.g) * p),
+    b: clampByte(rgb.b + (target - rgb.b) * p),
+  };
+}
+
+const rgbStr = ({ r, g, b }) => `rgb(${r}, ${g}, ${b})`;
+
+/** CSS custom properties derived from a single accent hex — drives the whole UI + reports. */
+export function themeVars(accent) {
+  const hex = accent || "#f2a71b";
+  const base = hexToRgb(hex);
+  const lum = (0.299 * base.r + 0.587 * base.g + 0.114 * base.b) / 255;
+  return {
+    "--accent": hex,
+    "--accent-2": rgbStr(mix(base, 0.16)),
+    "--accent-deep": rgbStr(mix(base, -0.14)),
+    "--accent-soft": `rgba(${base.r}, ${base.g}, ${base.b}, 0.14)`,
+    "--accent-ink": lum > 0.62 ? "#1c1200" : "#ffffff",
+    "--accent-glow": `rgba(${base.r}, ${base.g}, ${base.b}, 0.42)`,
+  };
+}
