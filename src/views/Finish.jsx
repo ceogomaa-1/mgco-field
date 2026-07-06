@@ -59,6 +59,7 @@ export default function Finish({ db, update, go, jobId }) {
       j.taxRate = Number(taxRate) || 0;
       j.notes = notesRef.current;
       j.status = "done";
+      j.rev = (j.rev || 0) + 1;
     });
     go("report", { id: jobId });
   };

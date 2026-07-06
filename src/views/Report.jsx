@@ -2,10 +2,13 @@ import { workedMs, jobTotals, fmtTime, fmtDate, fmtDur, money, buildReportText, 
 import { TopBar, toast } from "../ui";
 import { Icon } from "../icons";
 
-export default function Report({ db, update, go, jobId }) {
+export default function Report({ db, update, go, jobId, ctx, team }) {
   const job = db.jobs.find((j) => j.id === jobId);
   const customer = db.customers.find((c) => c.id === job?.customerId);
-  const worker = db.workers.find((w) => w.id === job?.workerId);
+  const worker = job?.workerUserId
+    ? (team || []).find((m) => m.userId === job.workerUserId) ||
+      (job.workerUserId === ctx?.me?.userId ? { name: ctx.me.name } : null)
+    : null;
 
   if (!job) {
     return (
@@ -58,7 +61,10 @@ export default function Report({ db, update, go, jobId }) {
 
   const deleteJob = () => {
     if (confirm("Delete this job and its report? This can't be undone.")) {
-      update((d) => (d.jobs = d.jobs.filter((j) => j.id !== jobId)));
+      update((d) => {
+        d.jobs = d.jobs.filter((j) => j.id !== jobId);
+        d.deletedIds.push(jobId);
+      });
       go("home");
     }
   };

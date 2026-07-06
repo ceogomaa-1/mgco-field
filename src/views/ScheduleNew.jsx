@@ -13,17 +13,18 @@ function defaultTime() {
   return `${String(h).padStart(2, "0")}:00`;
 }
 
-export default function ScheduleNew({ db, update, go }) {
+export default function ScheduleNew({ db, update, go, ctx, team }) {
   const [customerId, setCustomerId] = useState(db.customers[0]?.id || "new");
   const [newName, setNewName] = useState("");
   const [newPhone, setNewPhone] = useState("");
   const [date, setDate] = useState(defaultDate());
   const [time, setTime] = useState(defaultTime());
   const [note, setNote] = useState("");
-  const [workerId, setWorkerId] = useState("");
+  const [workerUserId, setWorkerUserId] = useState(ctx?.me?.userId || "");
 
   const isNew = customerId === "new";
   const valid = date && time && (!isNew || newName.trim());
+  const assignable = ctx?.role === "owner" && team.length > 1;
 
   const save = () => {
     if (!valid) return;
@@ -38,7 +39,7 @@ export default function ScheduleNew({ db, update, go }) {
       d.jobs.push({
         id: uid(),
         customerId: cid,
-        workerId: workerId || null,
+        workerUserId: workerUserId || ctx?.me?.userId || null,
         status: "scheduled",
         scheduledFor: when,
         scheduleNote: note.trim(),
@@ -50,6 +51,7 @@ export default function ScheduleNew({ db, update, go }) {
         notes: "",
         rate: Number(d.settings.rate) || 0,
         taxRate: Number(d.settings.taxRate) || 0,
+        rev: 1,
       });
     });
     go("schedule");
@@ -86,14 +88,13 @@ export default function ScheduleNew({ db, update, go }) {
           <Field label="Time" type="time" value={time} onChange={(e) => setTime(e.target.value)} />
         </div>
 
-        {db.workers.length > 0 && (
+        {assignable && (
           <label className="field">
             <span>Assigned to</span>
-            <select value={workerId} onChange={(e) => setWorkerId(e.target.value)}>
-              <option value="">Me</option>
-              {db.workers.map((w) => (
-                <option key={w.id} value={w.id}>
-                  {w.name}
+            <select value={workerUserId} onChange={(e) => setWorkerUserId(e.target.value)}>
+              {team.map((m) => (
+                <option key={m.userId} value={m.userId}>
+                  {m.userId === ctx.me.userId ? `${m.name} (you)` : m.name}
                 </option>
               ))}
             </select>

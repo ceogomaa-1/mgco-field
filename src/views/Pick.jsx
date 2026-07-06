@@ -3,17 +3,16 @@ import { uid } from "../util";
 import { TopBar, Field } from "../ui";
 import { Icon } from "../icons";
 
-export default function Pick({ db, update, go }) {
+export default function Pick({ db, update, go, ctx }) {
   const [q, setQ] = useState("");
   const [creating, setCreating] = useState(db.customers.length === 0);
   const [form, setForm] = useState({ name: "", phone: "", address: "", email: "" });
-  const [workerId, setWorkerId] = useState(null);
 
   const start = (customerId) => {
     const job = {
       id: uid(),
       customerId,
-      workerId,
+      workerUserId: ctx?.me?.userId || null,
       startedAt: Date.now(),
       finishedAt: null,
       scheduledFor: null,
@@ -24,6 +23,7 @@ export default function Pick({ db, update, go }) {
       rate: Number(db.settings.rate) || 0,
       taxRate: Number(db.settings.taxRate) || 0,
       status: "active",
+      rev: 1,
     };
     update((d) => d.jobs.push(job));
     go("job", { id: job.id });
@@ -43,26 +43,6 @@ export default function Pick({ db, update, go }) {
   return (
     <div className="page">
       <TopBar title="Who's the job for?" onBack={() => go("home")} />
-
-      {db.workers.length > 0 && (
-        <div className="who-row">
-          <label className="mini-label">WHO'S WORKING</label>
-          <div className="chips">
-            <button className={workerId === null ? "sel" : ""} onClick={() => setWorkerId(null)}>
-              Me
-            </button>
-            {db.workers.map((w) => (
-              <button
-                key={w.id}
-                className={workerId === w.id ? "sel" : ""}
-                onClick={() => setWorkerId(w.id)}
-              >
-                {w.name}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
 
       {!creating ? (
         <>

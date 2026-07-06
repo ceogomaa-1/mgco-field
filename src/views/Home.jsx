@@ -5,7 +5,7 @@ import {
   dayStart, onBreak, greeting,
 } from "../util";
 
-export default function Home({ db, update, go, active }) {
+export default function Home({ db, update, go, active, ctx }) {
   const [, tick] = useState(0);
   useEffect(() => {
     if (!active) return;
@@ -15,7 +15,10 @@ export default function Home({ db, update, go, active }) {
 
   const s = db.settings;
   const cur = s.currency;
-  const started = db.jobs.filter((j) => j.startedAt);
+  const meId = ctx?.me?.userId;
+  // Today is YOUR personal clock — the Team tab has the company-wide view
+  const mine = db.jobs.filter((j) => !j.workerUserId || j.workerUserId === meId);
+  const started = mine.filter((j) => j.startedAt);
   const doneToday = started.filter((j) => j.status === "done" && isToday(j.startedAt));
   const workedToday = started.filter((j) => isToday(j.startedAt)).reduce((s, j) => s + workedMs(j), 0);
   const billedToday = doneToday.reduce((s, j) => s + jobTotals(j).total, 0);
@@ -23,7 +26,7 @@ export default function Home({ db, update, go, active }) {
   const recent = [...started].sort((a, b) => b.startedAt - a.startedAt).slice(0, 25);
   const cname = (id) => db.customers.find((c) => c.id === id)?.name || "Customer";
 
-  const upNext = db.jobs
+  const upNext = mine
     .filter((j) => j.status === "scheduled" && j.scheduledFor < dayStart() + 86400000)
     .sort((a, b) => a.scheduledFor - b.scheduledFor)
     .slice(0, 2);
@@ -34,6 +37,8 @@ export default function Home({ db, update, go, active }) {
       if (j) {
         j.startedAt = Date.now();
         j.status = "active";
+        j.workerUserId = j.workerUserId || meId || null;
+        j.rev = (j.rev || 0) + 1;
       }
     });
     go("job", { id });
@@ -42,10 +47,13 @@ export default function Home({ db, update, go, active }) {
   return (
     <div className="page">
       <header className="brand">
-        <button className="brand-id" onClick={() => go("company")}>
+        <button
+          className="brand-id"
+          onClick={() => ctx?.role === "owner" && go("company")}
+        >
           {s.logo && <img className="brand-logo" src={s.logo} alt="" />}
           <span className={"brand-name" + (s.company ? "" : " unset")}>
-            {s.company || "Set up your brand"}
+            {s.company || (ctx?.role === "owner" ? "Set up your brand" : "Field")}
           </span>
         </button>
         <div className="brand-date">{fmtDate(Date.now())}</div>

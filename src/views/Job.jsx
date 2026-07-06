@@ -5,7 +5,7 @@ import { TopBar, Sheet, toast } from "../ui";
 import { Icon } from "../icons";
 import { scanReceipt, aiPolish, localPolish, makeRecognizer, speechSupported } from "../ai";
 
-export default function Job({ db, update, go, jobId }) {
+export default function Job({ db, update, go, jobId, ctx, team }) {
   const job = db.jobs.find((j) => j.id === jobId);
   const [sheet, setSheet] = useState(null); // 'materials' | 'photos' | 'notes'
   const [voiceOnOpen, setVoiceOnOpen] = useState(false);
@@ -25,13 +25,20 @@ export default function Job({ db, update, go, jobId }) {
   }
 
   const customer = db.customers.find((c) => c.id === job.customerId);
-  const worker = db.workers.find((w) => w.id === job.workerId);
+  const worker =
+    job.workerUserId && job.workerUserId !== ctx?.me?.userId
+      ? (team || []).find((m) => m.userId === job.workerUserId)
+      : null;
   const paused = onBreak(job);
   const cur = db.settings.currency;
+  // central mutator: every change bumps rev so background sync uploads it
   const patch = (fn) =>
     update((d) => {
       const j = d.jobs.find((x) => x.id === jobId);
-      if (j) fn(j, d);
+      if (j) {
+        fn(j, d);
+        j.rev = (j.rev || 0) + 1;
+      }
     });
 
   const toggleBreak = () =>
@@ -158,6 +165,7 @@ function Materials({ job, db, patch, update, cur }) {
       } else {
         d.favorites.push({ name: item.name, price: item.price, uses: 1 });
       }
+      d.favRev = (d.favRev || 0) + 1;
     });
     setName("");
     setQty("1");

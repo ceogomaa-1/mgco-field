@@ -68,8 +68,8 @@ export default function Assistant({ go }) {
       {status === "ok" && <div className="callout ok">✓ AI is live. Summaries and receipt scanning are good to go.</div>}
       {status === "error" && (
         <div className="callout bad">
-          AI isn't responding yet. Make sure the <b>ANTHROPIC_API_KEY</b> secret is set on the
-          Supabase project (Dashboard → Edge Functions → Secrets), then test again.
+          AI isn't responding yet. Make sure the <b>XAI_API_KEY</b> secret is set on the Supabase
+          project (Dashboard → Edge Functions → Secrets), then test again.
           {detail && <small>{detail}</small>}
         </div>
       )}

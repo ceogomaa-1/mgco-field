@@ -1,14 +1,19 @@
 import { fmtTime, fmtDayLabel, dayStart } from "../util";
 import { Icon } from "../icons";
 
-export default function Schedule({ db, update, go }) {
+export default function Schedule({ db, update, go, ctx, team }) {
   const scheduled = db.jobs
     .filter((j) => j.status === "scheduled")
     .sort((a, b) => a.scheduledFor - b.scheduledFor);
 
+  const meId = ctx?.me?.userId;
   const cname = (id) => db.customers.find((c) => c.id === id)?.name || "Customer";
   const caddr = (id) => db.customers.find((c) => c.id === id)?.address || "";
-  const wname = (id) => db.workers.find((w) => w.id === id)?.name;
+  const wname = (id) => {
+    if (!id || id === meId) return null;
+    return team.find((m) => m.userId === id)?.name || "assigned";
+  };
+  const mineOrOpen = (j) => !j.workerUserId || j.workerUserId === meId;
 
   const today = dayStart();
 
@@ -32,6 +37,8 @@ export default function Schedule({ db, update, go }) {
       if (j) {
         j.startedAt = Date.now();
         j.status = "active";
+        j.workerUserId = j.workerUserId || meId || null;
+        j.rev = (j.rev || 0) + 1;
       }
     });
     go("job", { id });
@@ -39,7 +46,10 @@ export default function Schedule({ db, update, go }) {
 
   const remove = (id) => {
     if (confirm("Remove this scheduled job?")) {
-      update((d) => (d.jobs = d.jobs.filter((j) => j.id !== id)));
+      update((d) => {
+        d.jobs = d.jobs.filter((j) => j.id !== id);
+        d.deletedIds.push(id);
+      });
     }
   };
 
@@ -72,19 +82,21 @@ export default function Schedule({ db, update, go }) {
                 <div className="grow-main">
                   <b>{cname(j.customerId)}</b>
                   <span>
-                    {[caddr(j.customerId), wname(j.workerId), j.scheduleNote].filter(Boolean).join(" • ") ||
+                    {[caddr(j.customerId), wname(j.workerUserId), j.scheduleNote].filter(Boolean).join(" • ") ||
                       "No details"}
                   </span>
                 </div>
                 <div className="sched-actions">
-                  {(g.overdue || dayStart(j.scheduledFor) === today) && (
+                  {(g.overdue || dayStart(j.scheduledFor) === today) && mineOrOpen(j) && (
                     <button className="btn small primary" onClick={() => startNow(j.id)}>
                       Start
                     </button>
                   )}
-                  <button className="icon-btn" onClick={() => remove(j.id)}>
-                    <Icon name="x" size={14} />
-                  </button>
+                  {(ctx?.role === "owner" || mineOrOpen(j)) && (
+                    <button className="icon-btn" onClick={() => remove(j.id)}>
+                      <Icon name="x" size={14} />
+                    </button>
+                  )}
                 </div>
               </div>
             ))}

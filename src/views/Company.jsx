@@ -18,10 +18,18 @@ export default function Company({ db, update, go }) {
   const s = db.settings;
   const logoRef = useRef(null);
   const bannerRef = useRef(null);
-  const set = (key, value) => update((d) => (d.settings[key] = value));
+  const bump = (d) => (d.settingsRev = (d.settingsRev || 0) + 1);
+  const set = (key, value) =>
+    update((d) => {
+      d.settings[key] = value;
+      bump(d);
+    });
   const accent = (s.theme?.accent || "#f2a71b").toLowerCase();
   const setAccent = (c) =>
-    update((d) => (d.settings.theme = { ...(d.settings.theme || {}), accent: c }));
+    update((d) => {
+      d.settings.theme = { ...(d.settings.theme || {}), accent: c };
+      bump(d);
+    });
 
   const onLogo = async (e) => {
     const f = e.target.files?.[0];
@@ -98,7 +106,7 @@ export default function Company({ db, update, go }) {
         <Field label="Email" type="email" value={s.email} onChange={(e) => set("email", e.target.value)} placeholder="you@company.com" />
       </div>
 
-      <h2>Appearance</h2>
+      <h2>Appearance — this is what your crew sees too</h2>
       <div className="card form">
         <label className="mini-label">ACCENT COLOR</label>
         <div className="swatches">

@@ -4,6 +4,21 @@
 
 Part of the MG&CO Technologies Trades & Contractors vertical.
 
+**Multi-tenant now.** Each company is fully isolated. Business owners get a live team command
+center; employees get their own private workspace. Access is gated by the TechOps team, and owners
+invite their crew by email. See [SETUP.md](SETUP.md) for go-live steps.
+
+## Accounts & portals
+
+- **Owner portal** — Team tab shows who's on the clock right now (live timers via Supabase realtime),
+  per-employee weekly hours / jobs / billed, wages, and an **Invite your team** flow. Owners set the
+  company brand, colors, and billing — which every employee inherits.
+- **Employee portal** — signs in and immediately sees their company's branding. Their own clock, jobs,
+  photos and hours only. Cannot see anyone else's work and cannot change branding.
+- **TechOps gate** — an owner can only sign in after TechOps enables their email (from the
+  mgcodashboard client page, or the `admin` edge function). RLS enforces every boundary server-side.
+- **Auth** — email/password or Google. Employees join via emailed invite; each gets their own profile.
+
 ## Features
 
 **Core (works fully offline)**
@@ -16,12 +31,14 @@ Part of the MG&CO Technologies Trades & Contractors vertical.
 - **Scheduling** — line up jobs by day, one-tap start when you arrive, overdue flagging
 - **Team & payroll** — add workers with wages, assign them to jobs, weekly hours / pay / billed rollups with copyable summaries
 
-**AI (Supabase Edge Function + Claude)**
+**AI (Supabase Edge Function + xAI Grok)**
 - **Voice notes** — tap the mic and talk; live speech-to-text into job notes (Web Speech API, on-device)
 - **"Make it professional"** — rough field notes rewritten into a customer-ready work summary
 - **Receipt scanning** — snap a supplier receipt; line items, quantities and unit prices fill the materials list automatically
 
-The app degrades gracefully: with no AI configured, everything still works — voice keeps transcribing locally and polish falls back to a local cleanup.
+Powered by xAI Grok (`XAI_API_KEY`), with an Anthropic Claude fallback if `ANTHROPIC_API_KEY` is set
+instead. The app degrades gracefully: with no AI configured, everything still works — voice keeps
+transcribing locally and polish falls back to a local cleanup.
 
 ## Run it
 

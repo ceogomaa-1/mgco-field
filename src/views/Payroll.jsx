@@ -3,18 +3,20 @@ import { weekStart, WEEK_MS, fmtWeekRange, workedMs, jobTotals, fmtDur, money } 
 import { TopBar, toast } from "../ui";
 import { Icon } from "../icons";
 
-export default function Payroll({ db, go }) {
+export default function Payroll({ db, go, ctx, team }) {
   const [ws, setWs] = useState(weekStart());
   const cur = db.settings.currency;
+  const isOwner = ctx?.role === "owner";
+  const title = isOwner ? "Payroll" : "My hours";
 
   const weekJobs = db.jobs.filter(
     (j) => j.startedAt && j.startedAt >= ws && j.startedAt < ws + WEEK_MS
   );
 
-  // group by worker (null = owner)
+  // group by worker (employees only ever have their own jobs locally)
   const buckets = new Map();
   for (const j of weekJobs) {
-    const key = j.workerId || "me";
+    const key = j.workerUserId || ctx?.me?.userId || "me";
     if (!buckets.has(key)) buckets.set(key, { jobs: 0, ms: 0, billed: 0 });
     const b = buckets.get(key);
     b.jobs += 1;
@@ -23,9 +25,10 @@ export default function Payroll({ db, go }) {
   }
 
   const rows = [...buckets.entries()].map(([key, b]) => {
-    const worker = key === "me" ? null : db.workers.find((w) => w.id === key);
-    const name = key === "me" ? "You" : worker?.name || "Former worker";
-    const wage = worker?.wage || 0;
+    const member = (team || []).find((m) => m.userId === key);
+    const isMe = key === ctx?.me?.userId;
+    const name = isMe ? "You" : member?.name || "Former worker";
+    const wage = member?.wage || 0;
     const hrs = b.ms / 3600000;
     return { key, name, wage, hrs, ms: b.ms, jobs: b.jobs, pay: wage * hrs, billed: b.billed };
   });
@@ -36,7 +39,7 @@ export default function Payroll({ db, go }) {
   const totalBilled = rows.reduce((s, r) => s + r.billed, 0);
 
   const copySummary = async () => {
-    const L = [`Payroll — week of ${fmtWeekRange(ws)}`, ""];
+    const L = [`${title} — week of ${fmtWeekRange(ws)}`, ""];
     for (const r of rows) {
       L.push(
         `${r.name}: ${r.hrs.toFixed(2)}h over ${r.jobs} job${r.jobs !== 1 ? "s" : ""}` +
@@ -49,7 +52,7 @@ export default function Payroll({ db, go }) {
     L.push(`Total billed: ${money(totalBilled, cur)}`);
     try {
       await navigator.clipboard.writeText(L.join("\n"));
-      toast("Payroll summary copied");
+      toast("Summary copied");
     } catch {
       prompt("Copy the summary below:", L.join("\n"));
     }
@@ -57,7 +60,7 @@ export default function Payroll({ db, go }) {
 
   return (
     <div className="page">
-      <TopBar title="Payroll" onBack={() => go("more")} />
+      <TopBar title={title} onBack={() => go("more")} />
 
       <div className="week-nav">
         <button className="icon-btn" onClick={() => setWs(ws - WEEK_MS)}>
@@ -67,11 +70,7 @@ export default function Payroll({ db, go }) {
           <b>{fmtWeekRange(ws)}</b>
           <span>{ws === weekStart() ? "This week" : ws === weekStart() - WEEK_MS ? "Last week" : "Week"}</span>
         </div>
-        <button
-          className="icon-btn"
-          disabled={ws >= weekStart()}
-          onClick={() => setWs(ws + WEEK_MS)}
-        >
+        <button className="icon-btn" disabled={ws >= weekStart()} onClick={() => setWs(ws + WEEK_MS)}>
           <Icon name="chevronRight" size={18} />
         </button>
       </div>
@@ -81,10 +80,17 @@ export default function Payroll({ db, go }) {
           <b>{fmtDur(totalMs)}</b>
           <span>Hours</span>
         </div>
-        <div className="stat">
-          <b>{money(totalPay, cur)}</b>
-          <span>Payroll</span>
-        </div>
+        {isOwner ? (
+          <div className="stat">
+            <b>{money(totalPay, cur)}</b>
+            <span>Payroll</span>
+          </div>
+        ) : (
+          <div className="stat">
+            <b>{rows[0]?.jobs || 0}</b>
+            <span>Jobs</span>
+          </div>
+        )}
         <div className="stat">
           <b>{money(totalBilled, cur)}</b>
           <span>Billed</span>
@@ -108,7 +114,11 @@ export default function Payroll({ db, go }) {
                 </span>
               </div>
               <div className="grow-side">
-                {r.wage > 0 ? <b>{money(r.pay, cur)}</b> : <span className="dim">no wage set</span>}
+                {isOwner && r.wage > 0 ? (
+                  <b>{money(r.pay, cur)}</b>
+                ) : isOwner ? (
+                  <span className="dim">no wage set</span>
+                ) : null}
               </div>
             </div>
           ))}
