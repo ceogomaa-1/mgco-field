@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 const DEFAULTS = {
   settings: {
@@ -65,12 +65,21 @@ export function useDb(storageKey) {
     return () => clearTimeout(t.current);
   }, [db]);
 
-  const update = (fn) =>
-    setDb((prev) => {
-      const next = structuredClone(prev);
-      fn(next);
-      return next;
-    });
+  // Stable across renders — setDb from useState never changes identity, so an
+  // empty dep array is safe. This MUST stay referentially stable: it feeds
+  // useCallback chains in App.jsx (pullNow -> runBootstrap -> effects), and an
+  // unstable `update` here previously caused those effects to tear down and
+  // recreate the realtime subscription on every render, which triggered a
+  // pull -> re-render -> re-subscribe feedback loop (browser-choking request storm).
+  const update = useCallback(
+    (fn) =>
+      setDb((prev) => {
+        const next = structuredClone(prev);
+        fn(next);
+        return next;
+      }),
+    []
+  );
 
   return [db, update, setDb];
 }

@@ -235,8 +235,10 @@ export async function fetchTeam(ctx) {
 /* ---------- realtime ---------- */
 
 export function subscribeJobs(onPoke) {
+  // Unique name per call so an overlapping subscribe/unsubscribe pair (e.g. a
+  // fast remount) can never collide on the same realtime topic.
   const channel = supa
-    .channel("jobs-live")
+    .channel(`jobs-live-${Math.random().toString(36).slice(2)}`)
     .on("postgres_changes", { event: "*", schema: "public", table: "jobs" }, onPoke)
     .subscribe();
   return () => supa.removeChannel(channel);
