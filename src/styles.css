@@ -530,6 +530,9 @@ input[type="date"], input[type="time"] { color-scheme: dark; }
 
 .who-row { display: flex; flex-direction: column; gap: 9px; }
 
+.receipt-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.receipt-btns .btn { padding: 13px 10px; font-size: 14px; }
+
 .mat-form { display: flex; flex-direction: column; gap: 10px; }
 .mat-row { display: grid; grid-template-columns: 1fr 1.4fr auto; gap: 10px; }
 .mat-row.team-row { grid-template-columns: 1.5fr 1fr auto; }

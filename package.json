@@ -12,6 +12,7 @@
     "@fontsource-variable/inter": "^5.2.8",
     "@supabase/supabase-js": "^2.110.0",
     "framer-motion": "^12.42.2",
+    "pdfjs-dist": "^4.10.38",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },

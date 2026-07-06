@@ -150,7 +150,9 @@ function Materials({ job, db, patch, update, cur }) {
   const [qty, setQty] = useState("1");
   const [price, setPrice] = useState("");
   const [scanning, setScanning] = useState(false);
-  const scanRef = useRef(null);
+  const [scanLabel, setScanLabel] = useState("");
+  const cameraRef = useRef(null);
+  const uploadRef = useRef(null);
   const favs = [...db.favorites].sort((a, b) => b.uses - a.uses).slice(0, 8);
 
   const add = (n, p, q) => {
@@ -172,36 +174,84 @@ function Materials({ job, db, patch, update, cur }) {
     setPrice("");
   };
 
-  const onReceipt = async (e) => {
-    const f = e.target.files?.[0];
-    e.target.value = "";
-    if (!f) return;
+  // Scans one already-rasterized image (data URL) and adds whatever items come back.
+  const scanOneImage = async (dataURL) => {
+    const result = await scanReceipt(dataURL);
+    const items = (result?.items || []).filter((it) => it.name);
+    for (const it of items) add(it.name, it.price, it.qty || 1);
+    return items.length;
+  };
+
+  const isPdf = (f) => f.type === "application/pdf" || /\.pdf$/i.test(f.name);
+
+  // Shared by both the camera button and the device-upload button — handles
+  // any mix of photos and PDFs (PDF pages are rasterized on-device first).
+  const processFiles = async (files) => {
+    if (!files.length) return;
     setScanning(true);
+    let added = 0;
+    let failed = 0;
     try {
-      const image = await compressImage(f, 1400, 0.8);
-      const result = await scanReceipt(image);
-      const items = (result?.items || []).filter((it) => it.name);
-      if (!items.length) {
-        toast("Couldn't read any items off that receipt");
-        return;
+      for (let i = 0; i < files.length; i++) {
+        const f = files[i];
+        setScanLabel(files.length > 1 ? `Reading receipt ${i + 1} of ${files.length}…` : "Reading receipt…");
+        try {
+          if (isPdf(f)) {
+            const { pdfToImages } = await import("../pdfImages");
+            const pages = await pdfToImages(f);
+            for (const page of pages) added += await scanOneImage(page);
+          } else {
+            const image = await compressImage(f, 1400, 0.8);
+            added += await scanOneImage(image);
+          }
+        } catch (err) {
+          failed += 1;
+          console.warn("receipt scan failed", err);
+        }
       }
-      for (const it of items) add(it.name, it.price, it.qty || 1);
-      toast(`✓ ${items.length} item${items.length > 1 ? "s" : ""} added from receipt`);
-    } catch (err) {
-      toast("AI isn't set up yet — add materials by hand for now");
-      console.warn(err);
+      if (added > 0) toast(`✓ ${added} item${added > 1 ? "s" : ""} added from receipt${files.length > 1 ? "s" : ""}`);
+      else if (failed > 0) toast("AI isn't set up yet — add materials by hand for now");
+      else toast("Couldn't read any items off that receipt");
     } finally {
       setScanning(false);
+      setScanLabel("");
     }
+  };
+
+  const onCamera = (e) => {
+    const files = Array.from(e.target.files || []);
+    e.target.value = "";
+    processFiles(files);
+  };
+
+  const onUpload = (e) => {
+    const files = Array.from(e.target.files || []);
+    e.target.value = "";
+    processFiles(files);
   };
 
   return (
     <div className="stack">
-      <button className="btn big secondary" disabled={scanning} onClick={() => scanRef.current?.click()}>
-        <Icon name="receipt" size={18} />
-        {scanning ? "Reading receipt…" : "Scan a receipt"}
-      </button>
-      <input ref={scanRef} type="file" accept="image/*" capture="environment" hidden onChange={onReceipt} />
+      <div className="receipt-btns">
+        <button className="btn secondary" disabled={scanning} onClick={() => cameraRef.current?.click()}>
+          <Icon name="camera" size={17} />
+          Take photo
+        </button>
+        <button className="btn secondary" disabled={scanning} onClick={() => uploadRef.current?.click()}>
+          <Icon name="receipt" size={17} />
+          Upload file
+        </button>
+      </div>
+      {scanning && <div className="dim center">{scanLabel || "Reading receipt…"}</div>}
+      <input ref={cameraRef} type="file" accept="image/*" capture="environment" hidden onChange={onCamera} />
+      <input
+        ref={uploadRef}
+        type="file"
+        accept="image/*,application/pdf"
+        multiple
+        hidden
+        onChange={onUpload}
+      />
 
       {favs.length > 0 && (
         <>
