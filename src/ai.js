@@ -25,6 +25,15 @@ export function scanReceipt(imageDataURL) {
   return callAI({ task: "receipt", image: imageDataURL });
 }
 
+/**
+ * Turn a spoken measurement-note transcript into suggested annotations.
+ * Never invents numbers — only organizes what was said and guesses placement
+ * on the photo. Returns { items: [{ type, text, x, y }] }.
+ */
+export function suggestAnnotations(transcript, imageDataURL, existingTexts = []) {
+  return callAI({ task: "annotate", transcript, image: imageDataURL, existing: existingTexts });
+}
+
 /** Cheap offline cleanup used when the AI backend isn't reachable. */
 export function localPolish(text) {
   const parts = String(text)

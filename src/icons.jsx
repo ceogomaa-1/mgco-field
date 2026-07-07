@@ -124,6 +124,40 @@ const P = {
     </>
   ),
   x: <path d="M6 6l12 12M18 6L6 18" />,
+  ruler: (
+    <>
+      <path d="M3 16L16 3l5 5L8 21z" />
+      <path d="M13 6l2 2M9.5 9.5l2 2M6 13l2 2" />
+    </>
+  ),
+  lineDiag: (
+    <>
+      <path d="M5 19L19 5" />
+      <circle cx="5" cy="19" r="1.7" fill="currentColor" stroke="none" />
+      <circle cx="19" cy="5" r="1.7" fill="currentColor" stroke="none" />
+    </>
+  ),
+  square: <rect x="4" y="4" width="16" height="16" rx="2" />,
+  circleTool: <circle cx="12" cy="12" r="8" />,
+  undo: (
+    <>
+      <path d="M9 14L4 9l5-5" />
+      <path d="M4 9h10a6 6 0 0 1 0 12h-2" />
+    </>
+  ),
+  redo: (
+    <>
+      <path d="M15 14l5-5-5-5" />
+      <path d="M20 9H10a6 6 0 0 0 0 12h-2" />
+    </>
+  ),
+  move: <path d="M6 3l12.5 6-5.3 1.9L10.5 17z" fill="currentColor" stroke="none" strokeLinejoin="round" />,
+  pencil: (
+    <>
+      <path d="M12 20h9" />
+      <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z" />
+    </>
+  ),
 };
 
 export function Icon({ name, size = 22, className = "" }) {

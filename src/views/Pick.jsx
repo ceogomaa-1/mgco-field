@@ -20,6 +20,7 @@ export default function Pick({ db, update, go, ctx }) {
       materials: [],
       photos: [],
       notes: "",
+      measurementNotes: [],
       rate: Number(db.settings.rate) || 0,
       taxRate: Number(db.settings.taxRate) || 0,
       status: "active",

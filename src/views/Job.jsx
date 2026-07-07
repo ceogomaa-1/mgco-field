@@ -1,13 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import { AnimatePresence } from "framer-motion";
-import { uid, workedMs, breakMs, onBreak, fmtTimer, fmtTime, fmtDur, money, compressImage } from "../util";
+import { uid, workedMs, breakMs, onBreak, fmtTimer, fmtTime, fmtDur, fmtDate, money, compressImage } from "../util";
 import { TopBar, Sheet, toast } from "../ui";
 import { Icon } from "../icons";
 import { scanReceipt, aiPolish, localPolish, makeRecognizer, speechSupported } from "../ai";
 
 export default function Job({ db, update, go, jobId, ctx, team }) {
   const job = db.jobs.find((j) => j.id === jobId);
-  const [sheet, setSheet] = useState(null); // 'materials' | 'photos' | 'notes'
+  const [sheet, setSheet] = useState(null); // 'materials' | 'photos' | 'notes' | 'measurements'
   const [voiceOnOpen, setVoiceOnOpen] = useState(false);
   const [, tick] = useState(0);
 
@@ -115,6 +115,11 @@ export default function Job({ db, update, go, jobId, ctx, team }) {
           <b>Voice note</b>
           <span>You talk, we type</span>
         </button>
+        <button className="tile" onClick={() => setSheet("measurements")}>
+          <span className="tile-ic"><Icon name="ruler" /></span>
+          <b>Measurements</b>
+          <span>{(job.measurementNotes || []).length ? `${(job.measurementNotes || []).length} saved` : "Mark on photos"}</span>
+        </button>
       </div>
 
       <button className="btn-finish" onClick={() => go("finish", { id: job.id })}>
@@ -136,6 +141,11 @@ export default function Job({ db, update, go, jobId, ctx, team }) {
         {sheet === "notes" && (
           <Sheet key="n" title="Job notes" onClose={() => setSheet(null)}>
             <Notes job={job} patch={patch} autoVoice={voiceOnOpen} />
+          </Sheet>
+        )}
+        {sheet === "measurements" && (
+          <Sheet key="ms" title="Measurement Notes" onClose={() => setSheet(null)}>
+            <MeasurementNotes job={job} go={go} ctx={ctx} team={team} patch={patch} />
           </Sheet>
         )}
       </AnimatePresence>
@@ -501,6 +511,84 @@ function Notes({ job, patch, autoVoice }) {
         </button>
       </div>
       <small className="hint">This goes on the customer report word-for-word.</small>
+    </div>
+  );
+}
+
+/* ---------------- measurement notes (gallery + capture entry point) ---------------- */
+
+function MeasurementNotes({ job, go, ctx, team, patch }) {
+  const camRef = useRef(null);
+  const [capturing, setCapturing] = useState(false);
+  const notes = [...(job.measurementNotes || [])].sort((a, b) => b.createdAt - a.createdAt);
+
+  const onCapture = async (e) => {
+    const f = e.target.files?.[0];
+    e.target.value = "";
+    if (!f) return;
+    setCapturing(true);
+    try {
+      const image = await compressImage(f, 1600, 0.82);
+      go("measure", { jobId: job.id, draftImage: image });
+    } catch (err) {
+      console.warn("photo capture failed", err);
+      toast("Couldn't open that photo — try again");
+    } finally {
+      setCapturing(false);
+    }
+  };
+
+  const remove = (id) => {
+    if (confirm("Delete this measurement note?")) {
+      patch((j) => (j.measurementNotes = (j.measurementNotes || []).filter((n) => n.id !== id)));
+    }
+  };
+
+  const nameFor = (userId) =>
+    userId === ctx?.me?.userId ? "You" : (team || []).find((m) => m.userId === userId)?.name || "Teammate";
+
+  return (
+    <div className="stack">
+      <button className="btn big secondary" disabled={capturing} onClick={() => camRef.current?.click()}>
+        <Icon name="camera" size={18} />
+        {capturing ? "Opening…" : "＋ Add Measurement Note"}
+      </button>
+      <input ref={camRef} type="file" accept="image/*" capture="environment" hidden onChange={onCapture} />
+
+      {notes.length === 0 ? (
+        <div className="dim center">
+          Snap a wall, door, or anything that needs measurements — mark it up or talk it through,
+          it stays attached to this job forever.
+        </div>
+      ) : (
+        <div className="group">
+          {notes.map((n) => (
+            <div
+              key={n.id}
+              className="grow measure-row"
+              onClick={() => go("measure", { jobId: job.id, noteId: n.id })}
+            >
+              <img className="measure-thumb" src={n.image} alt="" />
+              <div className="grow-main">
+                <b>{n.title || "Measurement Note"}</b>
+                <span>
+                  {fmtDate(n.createdAt)}
+                  {n.room ? ` • ${n.room}` : ""} • {nameFor(n.createdBy)}
+                </span>
+              </div>
+              <button
+                className="icon-btn"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  remove(n.id);
+                }}
+              >
+                <Icon name="x" size={14} />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

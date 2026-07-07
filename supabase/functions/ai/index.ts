@@ -1,6 +1,7 @@
 // MG&CO Field — AI edge function (xAI Grok, with Anthropic fallback)
 // Tasks: "polish" (rough field notes → customer-ready summary)
 //        "receipt" (receipt photo → structured line items)
+//        "annotate" (voice transcript + job photo → suggested measurement annotations)
 // Secrets: XAI_API_KEY (preferred) or ANTHROPIC_API_KEY. Optional: AI_MODEL.
 
 const CORS = {
@@ -28,6 +29,21 @@ Skip subtotals, tax lines, totals, payment lines and store metadata.
 Use short readable item names. "price" is the UNIT price (line total ÷ qty).
 Respond with ONLY valid JSON, no markdown fences, in exactly this shape:
 {"supplier": "store name or empty string", "items": [{"name": "item", "qty": 1, "price": 9.99}]}`;
+
+const ANNOTATE_SYSTEM = `You help a contractor organize spoken field notes into labeled annotations on a job-site photo.
+
+Rules — follow exactly:
+- NEVER invent a measurement, dimension, or fact that was not said in the transcript. If a number wasn't spoken, do not include one.
+- Extract only what's explicitly stated. Clean up grammar and phrasing, but never add new information the contractor didn't say.
+- Each distinct measurement, instruction, or note becomes one separate item.
+- Combine a clearly-linked object + measurement into one label, e.g. "door frame is twelve feet eight inches" -> "Door Frame — 12' 8\\"".
+- Convert casual speech into short professional labels, e.g. "need another king stud" -> "Add King Stud"; "replace trim" -> "Replace Trim".
+- Format measurements cleanly (12' 8", 36", 8 ft) — only reformatting what was said, never recalculating or guessing at a value.
+- Look at the attached photo and suggest where each item visually belongs, as fractional coordinates x,y (each 0.0-1.0, top-left origin, 1.0 = full width/height). If you can't tell exactly where something belongs, place it at a reasonable default (x:0.5, y:0.5) rather than skipping it — the contractor can always drag it, so a rough guess is fine.
+- Pick the closest "type" for each item: "label" for a standalone note/instruction with no clear line or area, "rect" for something outlining an opening or area (a door, window, section of wall), "circle" for a spot (damage, a fixture), "line" for a span/edge measurement (a wall length, a header span).
+- If existing annotations are listed below, don't repeat one that's already covered unless the transcript adds new detail to it.
+- Respond with ONLY valid JSON, no markdown fences, in exactly this shape:
+{"items": [{"type": "label", "text": "Door Frame — 12' 8\\"", "x": 0.4, "y": 0.55}]}`;
 
 /** Pull the first JSON object out of a model reply, tolerating fences/preamble. */
 function extractJSON(text: string): unknown {
@@ -100,7 +116,7 @@ Deno.serve(async (req: Request) => {
     return json({ ok: false, error: "AI not configured — set the XAI_API_KEY secret" }, 503);
   }
 
-  let body: { task?: string; text?: string; image?: string };
+  let body: { task?: string; text?: string; image?: string; transcript?: string; existing?: string[] };
   try {
     body = await req.json();
   } catch {
@@ -138,6 +154,40 @@ Deno.serve(async (req: Request) => {
       const raw = useGrok
         ? await grokChat({ system: RECEIPT_SYSTEM, user, maxTokens: 4096 })
         : await claudeChat({ system: RECEIPT_SYSTEM, user, maxTokens: 4096 });
+      return json({ ok: true, result: extractJSON(raw) });
+    }
+
+    if (body.task === "annotate") {
+      const transcript = String(body.transcript || "").slice(0, 4000);
+      if (!transcript.trim()) return json({ ok: false, error: "No transcript provided" }, 400);
+      const image = String(body.image || "");
+      const match = image.match(/^data:(image\/[a-z+.-]+);base64,(.+)$/s);
+
+      const existingList = Array.isArray(body.existing) ? body.existing.slice(0, 30) : [];
+      const existingBlock = existingList.length
+        ? `\n\nExisting annotations already on this photo:\n${existingList.map((t) => `- ${t}`).join("\n")}`
+        : "";
+      const promptText = `Transcript:\n"${transcript}"${existingBlock}`;
+
+      let user: unknown[];
+      if (match) {
+        const [, mediaType, b64] = match;
+        user = useGrok
+          ? [
+              { type: "image_url", image_url: { url: image, detail: "high" } },
+              { type: "text", text: promptText },
+            ]
+          : [
+              { type: "image", source: { type: "base64", media_type: mediaType, data: b64 } },
+              { type: "text", text: promptText },
+            ];
+      } else {
+        user = [{ type: "text", text: promptText }];
+      }
+
+      const raw = useGrok
+        ? await grokChat({ system: ANNOTATE_SYSTEM, user, maxTokens: 2048 })
+        : await claudeChat({ system: ANNOTATE_SYSTEM, user, maxTokens: 2048 });
       return json({ ok: true, result: extractJSON(raw) });
     }
 

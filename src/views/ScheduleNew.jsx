@@ -49,6 +49,7 @@ export default function ScheduleNew({ db, update, go, ctx, team }) {
         materials: [],
         photos: [],
         notes: "",
+        measurementNotes: [],
         rate: Number(d.settings.rate) || 0,
         taxRate: Number(d.settings.taxRate) || 0,
         rev: 1,

@@ -20,6 +20,7 @@ import More from "./views/More";
 import Company from "./views/Company";
 import Payroll from "./views/Payroll";
 import Assistant from "./views/Assistant";
+import MeasureEditor from "./views/MeasureEditor";
 
 const OWNER_TABS = [
   { key: "home", label: "Today", icon: "clock" },
@@ -258,6 +259,16 @@ export default function App() {
     case "company":   screen = ctx.role === "owner" ? <Company {...props} /> : <More {...props} />; break;
     case "payroll":   screen = <Payroll {...props} />; break;
     case "assistant": screen = ctx.role === "owner" ? <Assistant {...props} /> : <Home {...props} active={active} />; break;
+    case "measure":
+      screen = (
+        <MeasureEditor
+          {...props}
+          jobId={view.jobId}
+          noteId={view.noteId}
+          draftImage={view.draftImage}
+        />
+      );
+      break;
     default:          screen = <Home {...props} active={active} />;
   }
 
